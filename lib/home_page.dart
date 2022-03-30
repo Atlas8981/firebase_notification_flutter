@@ -9,7 +9,9 @@ import 'package:flutter/material.dart';
 import 'notification_service.dart';
 
 class HomePage extends StatefulWidget {
-  const HomePage({Key? key}) : super(key: key);
+  const HomePage({
+    Key? key,
+  }) : super(key: key);
 
   @override
   _HomePageState createState() => _HomePageState();
@@ -44,7 +46,7 @@ class _HomePageState extends State<HomePage> {
   @override
   void didChangeDependencies() async {
     super.didChangeDependencies();
-    NotificationSettings settings = await _fcm.requestPermission(
+    final NotificationSettings settings = await _fcm.requestPermission(
       alert: true,
       announcement: false,
       badge: true,
@@ -68,7 +70,7 @@ class _HomePageState extends State<HomePage> {
     String? fcmToken = await _fcm.getToken();
     String uid = "auth.uid";
     if (fcmToken != null) {
-      var tokenRef =
+      final tokenRef =
           _db.collection("users").doc(uid).collection('token').doc(fcmToken);
       await tokenRef.set({
         'token': fcmToken,
@@ -100,9 +102,10 @@ class _HomePageState extends State<HomePage> {
             'Message also contained a notification: ${message.notification!.title}');
         print(message.notification!.title);
         NotificationService.showNotification(
-            title: '${message.notification!.title}',
-            body: "${message.notification!.body}",
-            payload: "this is payload");
+          title: '${message.notification!.title}',
+          body: "${message.notification!.body}",
+          payload: "this is payload",
+        );
       }
     });
   }
