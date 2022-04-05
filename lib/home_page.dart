@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:cloud_functions/cloud_functions.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import 'notification_service.dart';
@@ -18,38 +19,17 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
-  final FirebaseFirestore _db = FirebaseFirestore.instance;
-  final FirebaseMessaging _fcm = FirebaseMessaging.instance;
-  late StreamSubscription iosSubscription;
-
-  Future<void> setupInteractedMessage() async {
-    RemoteMessage? initialMessage =
-        await FirebaseMessaging.instance.getInitialMessage();
-
-    if (initialMessage != null) {
-      _handleMessage(initialMessage);
-    }
-
-    FirebaseMessaging.onMessageOpenedApp.listen(_handleMessage);
-  }
-
-  void _handleMessage(RemoteMessage message) {
-    print(message.toString());
-    print(message.messageId);
-  }
-
-  @override
-  void didChangeDependencies() async {
-    super.didChangeDependencies();
-    setupInteractedMessage();
-  }
+  final db = FirebaseFirestore.instance;
+  final fcm = FirebaseMessaging.instance;
+  final functions = FirebaseFunctions.instance;
+  final notificationService = NotificationService();
 
   Future<void> saveDeviceToken() async {
-    String? fcmToken = await _fcm.getToken();
+    String? fcmToken = await fcm.getToken();
     String uid = "auth.uid";
     if (fcmToken != null) {
       final tokenRef =
-          _db.collection("users").doc(uid).collection('token').doc(fcmToken);
+          db.collection("users").doc(uid).collection('token').doc(fcmToken);
       await tokenRef.set({
         'token': fcmToken,
         'createdAt': FieldValue.serverTimestamp(),
@@ -61,66 +41,56 @@ class _HomePageState extends State<HomePage> {
   @override
   void initState() {
     super.initState();
-    if (Platform.isIOS) {
-      // iosSubscription = _fcm.requestPermission();
-      // _fcm.requestPermission(());
-    } else {
-      saveDeviceToken();
-    }
 
-    NotificationService.init();
+    // NotificationService.init();
+    // notificationService.setupInteractedMessage();
+    // notificationService.setUpOnMessage();
+  }
 
-    FirebaseMessaging.onMessage.listen((RemoteMessage message) {
-      print('Got a message whilst in the foreground!');
-      print('Message data: ${message.data}');
+  Future<void> callCloudFunction() async {
+    print("calling");
+    final HttpsCallable callable =
+        functions.httpsCallable('sendHttpCallablePushNotification');
+    try {
+      final results = await callable();
 
-      if (message.notification != null &&
-          message.notification!.android != null) {
-        print(
-            'Message also contained a notification: ${message.notification!.title}');
-        print(message.notification!.title);
-        NotificationService.showNotification(
-          title: '${message.notification!.title}',
-          body: "${message.notification!.body}",
-          payload: "this is payload",
-        );
+      if (kDebugMode) {
+        print("results: $results");
       }
-    });
+    } on FirebaseFunctionsException catch (e) {
+      if (kDebugMode) {
+        print(e.toString());
+        print(e.message);
+        print(e.code);
+        print(e.details);
+        print(e.stackTrace);
+      }
+    }
+  }
+
+  Future<void> getToken() async {
+    final token = await fcm.getToken();
+    print("Token: $token");
   }
 
   @override
   Widget build(BuildContext context) {
+    getToken();
     return Scaffold(
       appBar: AppBar(
         title: const Text("Firebase Notification"),
+        actions: [
+          IconButton(
+            onPressed: () {
+              callCloudFunction();
+            },
+            icon: Icon(Icons.send),
+          )
+        ],
       ),
-      body: Container(),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          sendNotification();
-        },
-        child: const Icon(Icons.message),
+      body: Center(
+        child: Text("Testing Notification"),
       ),
     );
-  }
-
-  //Using cloud function to send notification
-  final FirebaseFunctions functions = FirebaseFunctions.instance;
-
-  void sendNotification() {
-    callCloudFunction();
-  }
-
-  Future<void> callCloudFunction() async {
-    final HttpsCallable callable =
-        functions.httpsCallable('sendHttpCallablePushNotification');
-    callable.call('Something is here');
-    try {
-      final results = await callable();
-      print(results);
-    } on FirebaseFunctionsException catch (e) {
-      print(e.message);
-      print(e.code);
-    }
   }
 }

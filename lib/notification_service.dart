@@ -6,7 +6,7 @@ import 'package:rxdart/rxdart.dart';
 class NotificationService {
   static final localNotifications = FlutterLocalNotificationsPlugin();
   static final onNotifications = BehaviorSubject<String>();
-  final FirebaseMessaging _fcm = FirebaseMessaging.instance;
+  final fcm = FirebaseMessaging.instance;
 
   static Future showNotification({
     int id = 0,
@@ -55,7 +55,7 @@ class NotificationService {
   }
 
   Future<void> setupInteractedMessage() async {
-    RemoteMessage? initialMessage = await _fcm.getInitialMessage();
+    RemoteMessage? initialMessage = await fcm.getInitialMessage();
 
     if (initialMessage != null) {
       _handleMessageOnOpenApp(initialMessage);
