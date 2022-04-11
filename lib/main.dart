@@ -8,6 +8,7 @@ import 'package:firebase_notification/home_page.dart';
 import 'package:flutter/material.dart';
 
 void main() async {
+
   WidgetsFlutterBinding.ensureInitialized();
 
   await AwesomeNotifications().initialize(
